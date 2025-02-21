@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import { useAccount } from "wagmi";
 import { useLoginWithAbstract, useAbstractClient } from "@abstract-foundation/agw-react";
+import JsonParser from '@/components/JsonParser';
 
 // 1) Define a type for your contract functions (simplified).
 //    This helps avoid "any" in the function signature.
@@ -343,6 +344,7 @@ export default function InteractPage() {
         <div className="p-4 flex flex-col gap-6">
             <h1 className="text-3xl font-bold">Smart Contract Interaction</h1>
 
+            <JsonParser />
             {/* Connect / Disconnect buttons */}
             {status === "connected" ? (
                 <div className="flex items-center gap-4">
