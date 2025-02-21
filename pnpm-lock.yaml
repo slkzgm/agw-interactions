@@ -26,6 +26,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+      wagmi:
+        specifier: ^2.14.11
+        version: 2.14.11(@tanstack/query-core@5.66.4)(@tanstack/react-query@5.66.8(react@19.0.0))(@types/react@19.0.10)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.0.0)(typescript@5.7.3)(utf-8-validate@5.0.10)(viem@2.23.4(bufferutil@4.0.9)(typescript@5.7.3)(utf-8-validate@5.0.10)(zod@3.24.2))(zod@3.24.2)
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -6229,7 +6232,7 @@ snapshots:
 
   extension-port-stream@3.0.0:
     dependencies:
-      readable-stream: 3.6.2
+      readable-stream: 4.7.0
       webextension-polyfill: 0.10.0
 
   eyes@0.1.8: {}
