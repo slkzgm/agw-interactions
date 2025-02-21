@@ -330,9 +330,9 @@ const CONTRACT_ADDRESS = "0x06D7Ee1D50828Ca96e11890A1601f6fe61F1e584" as const;
 export default function InteractPage() {
     const { login, logout } = useLoginWithAbstract();
     const { address, status } = useAccount();
-    const { data: agwClient } = useAbstractClient();
+    const { data: agwClient, isLoading } = useAbstractClient();
 
-    if (!agwClient) {
+    if (!agwClient && isLoading) {
         return (
             <div className="p-4">
                 <h1 className="text-2xl">Waiting for AbstractClient...</h1>
