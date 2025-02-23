@@ -1,16 +1,16 @@
+// Path: src/components/Providers.tsx
 "use client";
 
 import { AbstractWalletProvider } from "@abstract-foundation/agw-react";
-import {abstract} from "viem/chains";
+import { abstract } from "viem/chains";
+import { ThemeProvider } from "./ThemeProvider";
 
-export default function Providers({
-                                                  children,
-                                              }: {
-    children: React.ReactNode;
-}) {
-    return (
-        <AbstractWalletProvider chain={abstract}>
-            {children}
-        </AbstractWalletProvider>
-    );
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider>
+      <AbstractWalletProvider chain={abstract}>
+        {children}
+      </AbstractWalletProvider>
+    </ThemeProvider>
+  );
 }
