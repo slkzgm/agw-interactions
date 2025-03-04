@@ -8,17 +8,19 @@ import { Providers } from "@/components/Providers";
 import { NavBar } from "@/components/NavBar";
 
 export const metadata = {
-  title: "OCH LevelingGame Interactions",
-  description: "Interact with OCH LevelingGame contracts using AGW",
+  title: "OCH Contract Interactions",
+  description: "Interact with OCH LevelingGame and Endgame contracts using AGW",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground">
+      <body className="min-h-screen bg-background text-foreground flex flex-col">
         <Providers>
           <NavBar />
-          {children}
+          <main className="flex-grow container mx-auto px-4 py-6">
+            {children}
+          </main>
         </Providers>
       </body>
     </html>
