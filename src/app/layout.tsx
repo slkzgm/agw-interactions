@@ -5,6 +5,7 @@
 import "./globals.css";
 import { ReactNode } from "react";
 import { Providers } from "@/components/Providers";
+import { NavBar } from "@/components/NavBar";
 
 export const metadata = {
   title: "OCH LevelingGame Interactions",
@@ -15,7 +16,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground">
-        <Providers>{children}</Providers>
+        <Providers>
+          <NavBar />
+          {children}
+        </Providers>
       </body>
     </html>
   );
