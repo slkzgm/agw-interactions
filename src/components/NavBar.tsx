@@ -45,6 +45,16 @@ export function NavBar() {
               >
                 Endgame
               </Link>
+              <Link
+                href="/batch-transfer"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ml-2 ${
+                  isActive("/batch-transfer")
+                    ? "bg-primary text-white"
+                    : "text-foreground hover:bg-card"
+                }`}
+              >
+                Heroes
+              </Link>
             </nav>
           </div>
 
