@@ -9,10 +9,10 @@
  */
 
 import React, { useState } from "react";
-import { useAccount } from "wagmi";
-import { useAbstractClient } from "@abstract-foundation/agw-react";
 import { encodeFunctionData } from "viem";
 import { HEROES_ABI, HEROES_CONTRACT_ADDRESS } from "@/lib/heroesConstants";
+import {useAbstractClient} from '@abstract-foundation/agw-react';
+import {useAccount} from 'wagmi';
 
 export default function BatchTransferPage() {
   const { address, status } = useAccount();
@@ -57,6 +57,7 @@ export default function BatchTransferPage() {
             .filter((id) => !isNaN(id));
         }
       } catch (err) {
+        console.error(err)
         throw new Error(
           "Invalid token ID list. Provide comma-separated or JSON array of token IDs."
         );
@@ -75,7 +76,7 @@ export default function BatchTransferPage() {
           data: encodeFunctionData({
             abi: HEROES_ABI,
             functionName: "safeTransferFrom",
-            args: [agwClient.account.address, destination, BigInt(id)],
+            args: [address, destination as `0x${string}`, BigInt(id)],
           }),
         };
       });
@@ -85,9 +86,13 @@ export default function BatchTransferPage() {
       });
 
       setTxHash(hash);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err?.message || String(err));
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(String(err));
+      }
     } finally {
       setIsTransferring(false);
     }
