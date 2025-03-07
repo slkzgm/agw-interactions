@@ -14,6 +14,9 @@ importers:
       '@abstract-foundation/agw-react':
         specifier: ^1.5.4
         version: 1.5.4(axhcndrnhez4jmpmh6xkgnp6kq)
+      '@tanstack/react-query':
+        specifier: ^5.67.2
+        version: 5.67.2(react@19.0.0)
       next:
         specifier: 15.1.7
         version: 15.1.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -24,10 +27,10 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       viem:
-        specifier: ^2.23.4
+        specifier: 2.x
         version: 2.23.7(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2)
       wagmi:
-        specifier: ^2.14.11
+        specifier: ^2.14.12
         version: 2.14.12(@tanstack/query-core@5.67.2)(@tanstack/react-query@5.67.2(react@19.0.0))(@types/react@19.0.10)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.0.0)(typescript@5.8.2)(utf-8-validate@5.0.10)(viem@2.23.7(bufferutil@4.0.9)(typescript@5.8.2)(utf-8-validate@5.0.10)(zod@3.24.2))(zod@3.24.2)
     devDependencies:
       '@eslint/eslintrc':
