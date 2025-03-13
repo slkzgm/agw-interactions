@@ -23,7 +23,7 @@ export function NavBar() {
         <div className="flex flex-col md:flex-row items-center justify-between py-4">
           {/* Logo and Navigation */}
           <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 mb-4 md:mb-0 w-full md:w-auto">
-            <h1 className="text-xl font-bold mr-8">AGW Interact</h1>
+            <h1 className="text-xl font-bold mr-8">AGW Interactions</h1>
             <nav className="flex flex-wrap">
               <Link
                 href="/"

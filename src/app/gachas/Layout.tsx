@@ -2,7 +2,7 @@
 import { ReactNode } from "react";
 
 export const metadata = {
-  title: "OCH Contracts | Web3 Interactions",
+  title: "OCH Contracts | AGW Interactions",
   description:
     "Interact with OCH LevelingGame, Endgame, Heroes, and Gachas contracts",
 };
