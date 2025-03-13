@@ -46,9 +46,9 @@ export function NavBar() {
                 Endgame
               </Link>
               <Link
-                href="/heroes"
+                href="/batch-transfer"
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ml-2 ${
-                  isActive("/heroes")
+                  isActive("/batch-transfer")
                     ? "bg-primary text-white"
                     : "text-foreground hover:bg-card"
                 }`}
@@ -64,6 +64,16 @@ export function NavBar() {
                 }`}
               >
                 Gachas
+              </Link>
+              <Link
+                href="/contract-explorer"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ml-2 ${
+                  isActive("/contract-explorer")
+                    ? "bg-primary text-white"
+                    : "text-foreground hover:bg-card"
+                }`}
+              >
+                Explorer
               </Link>
             </nav>
           </div>

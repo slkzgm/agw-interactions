@@ -6,7 +6,7 @@ import { encodeFunctionData } from "viem";
 import { useAbstractClient } from "@abstract-foundation/agw-react";
 import { useAccount } from "wagmi";
 import { GACHAS_ABI, GACHAS_CONTRACT_ADDRESS } from "@/lib/gachasConstants";
-import { publicClient } from "@/lib/publicClient";
+import { readContract } from "@/app/actions";
 
 interface TokenTransfer {
   id: string;
@@ -49,20 +49,24 @@ export default function GachasPage() {
 
       // Create addresses array (all same address)
       const addresses = gachaIdRange.map(() => address);
-      const tokenIds = gachaIdRange.map((id) => BigInt(id));
+      const tokenIds = gachaIdRange.map((id) => id);
 
-      // Call balanceOfBatch
-      const balances = (await publicClient.readContract({
-        address: GACHAS_CONTRACT_ADDRESS,
-        abi: GACHAS_ABI,
-        functionName: "balanceOfBatch",
-        args: [addresses as `0x${string}`[], tokenIds],
-      })) as bigint[];
+      // Call server action instead of direct publicClient call
+      const response = await readContract("gachas", "balanceOfBatch", [
+        addresses,
+        tokenIds,
+      ]);
+
+      if (!response.success) {
+        throw new Error(response.error || "Failed to load gacha balances");
+      }
+
+      const balances = response.result as (string | number)[];
 
       // Create balance objects and filter those with non-zero balance
       const balanceObjects = gachaIdRange.map((id, index) => ({
         id,
-        balance: balances[index],
+        balance: BigInt(balances[index]), // Convert back to BigInt for local usage
       }));
 
       const nonZeroBalances = balanceObjects.filter(
