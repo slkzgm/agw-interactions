@@ -1,15 +1,16 @@
-// Path: frontend/app/layout.tsx
-/**
- * Description: Root layout for Next.js (App Router)
- */
+// Path: src/app/layout.tsx
 import "./globals.css";
 import { ReactNode } from "react";
 import { Providers } from "@/components/Providers";
 import { NavBar } from "@/components/NavBar";
+import { Footer } from "@/components/Footer";
 
 export const metadata = {
-  title: "OCH Contract Interactions",
-  description: "Interact with OCH LevelingGame and Endgame contracts using AGW",
+  title: {
+    default: "Contract Explorer | AGW Interactions",
+    template: "%s | AGW Interactions",
+  },
+  description: "Interact with any blockchain contract using AGW",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="flex-grow container mx-auto px-4 py-6">
             {children}
           </main>
+          <Footer />
         </Providers>
       </body>
     </html>
