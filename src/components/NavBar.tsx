@@ -24,7 +24,7 @@ export function NavBar() {
           {/* Logo and Navigation */}
           <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 mb-4 md:mb-0 w-full md:w-auto">
             <h1 className="text-xl font-bold mr-8">OCH Contracts</h1>
-            <nav className="flex">
+            <nav className="flex flex-wrap">
               <Link
                 href="/"
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
@@ -46,14 +46,24 @@ export function NavBar() {
                 Endgame
               </Link>
               <Link
-                href="/batch-transfer"
+                href="/heroes"
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ml-2 ${
-                  isActive("/batch-transfer")
+                  isActive("/heroes")
                     ? "bg-primary text-white"
                     : "text-foreground hover:bg-card"
                 }`}
               >
                 Heroes
+              </Link>
+              <Link
+                href="/gachas"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ml-2 ${
+                  isActive("/gachas")
+                    ? "bg-primary text-white"
+                    : "text-foreground hover:bg-card"
+                }`}
+              >
+                Gachas
               </Link>
             </nav>
           </div>

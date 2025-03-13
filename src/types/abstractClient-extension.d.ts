@@ -27,6 +27,8 @@ declare module "@abstract-foundation/agw-client" {
     /**
      * Batches multiple transaction calls into a single user operation (UserOp).
      */
-    sendTransactionBatch(params: { calls: { to: string; data: string }[] }): Promise<string>;
+    sendTransactionBatch(params: {
+      calls: { to: string; data: string }[];
+    }): Promise<string>;
   }
 }

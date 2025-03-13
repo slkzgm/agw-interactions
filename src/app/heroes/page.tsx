@@ -1,4 +1,4 @@
-// Path: src/app/batch-transfer/page.tsx
+// Path: src/app/heroes/page.tsx
 "use client";
 
 /**
@@ -11,10 +11,10 @@
 import React, { useState } from "react";
 import { encodeFunctionData } from "viem";
 import { HEROES_ABI, HEROES_CONTRACT_ADDRESS } from "@/lib/heroesConstants";
-import {useAbstractClient} from '@abstract-foundation/agw-react';
-import {useAccount} from 'wagmi';
+import { useAbstractClient } from "@abstract-foundation/agw-react";
+import { useAccount } from "wagmi";
 
-export default function BatchTransferPage() {
+export default function HeroesPage() {
   const { address, status } = useAccount();
   const { data: agwClient } = useAbstractClient();
 
@@ -57,7 +57,7 @@ export default function BatchTransferPage() {
             .filter((id) => !isNaN(id));
         }
       } catch (err) {
-        console.error(err)
+        console.error(err);
         throw new Error(
           "Invalid token ID list. Provide comma-separated or JSON array of token IDs."
         );
