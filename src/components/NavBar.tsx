@@ -79,6 +79,16 @@ export function NavBar() {
               >
                 Gachas
               </Link>
+              <Link
+                href="/magiceden"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ml-2 ${
+                  isActive("/magiceden")
+                    ? "bg-primary text-white"
+                    : "text-foreground hover:bg-card"
+                }`}
+              >
+                Magic Eden
+              </Link>
             </nav>
           </div>
 
