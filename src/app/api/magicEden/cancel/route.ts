@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     // Official aggregator route:
     const url =
-      "https://api-mainnet.magiceden.dev/v3/rtp/ethereum/execute/cancel/v3";
+      "https://api-mainnet.magiceden.dev/v3/rtp/abstract/execute/cancel/v3";
     console.log(
       "[cancelRoute] calling aggregator cancel/v3 with orderIds:",
       orderIds
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     }
 
     // aggregator route for signature, e.g. "/execute/cancel-signature/v1?signature=..."
-    const baseUrl = "https://api-mainnet.magiceden.dev/v3/rtp/ethereum";
+    const baseUrl = "https://api-mainnet.magiceden.dev/v3/rtp/abstract";
     const finalUrl = `${baseUrl}${endpoint}?signature=${encodeURIComponent(signature)}`;
 
     console.log(

@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(
-    "https://api-mainnet.magiceden.dev/v3/rtp/ethereum/orders/asks/v5"
+    "https://api-mainnet.magiceden.dev/v3/rtp/abstract/orders/asks/v5"
   );
   url.searchParams.set("maker", maker);
   url.searchParams.set("status", status);
