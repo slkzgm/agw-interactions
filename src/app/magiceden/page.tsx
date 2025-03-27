@@ -1,0 +1,306 @@
+// Path: src/app/magiceden/page.tsx
+"use client";
+
+/**
+ * Magic Eden Orders page:
+ * 1) Automatically loads the connected user's active orders on page load (if wallet is connected).
+ * 2) "Select All" / "Deselect All" to manage order selection.
+ * 3) Displays basic order info (price, token, etc.).
+ * 4) Supports two-step cancellation:
+ *    - If Magic Eden requires EIP-712 signature, we sign with wagmi's useSignTypedData,
+ *    - Then if a transaction step is needed, broadcast on-chain with Abstract client.
+ * 5) Links final transaction to https://abscan.org/tx/TX_HASH.
+ *
+ * Code is production-ready. Comments/logs in English only.
+ */
+
+import React, { useEffect, useState } from "react";
+import { useAccount, useSignTypedData } from "wagmi";
+import { useAbstractClient } from "@abstract-foundation/agw-react";
+import {
+  fetchActiveMagicEdenOrders,
+  requestMagicEdenCancellationSteps,
+  processMagicEdenSteps,
+  MagicEdenOrder,
+  SignEip712Callback,
+} from "@/lib/magicEdenApi";
+
+export default function MagicEdenPage() {
+  // Wagmi & Abstract states
+  const { isConnected, address: userWalletAddress } = useAccount();
+  const { data: agwClient } = useAbstractClient();
+
+  // wagmi typed data hook:
+  const { signTypedDataAsync } = useSignTypedData();
+
+  // Orders & UI state
+  const [orders, setOrders] = useState<MagicEdenOrder[]>([]);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [transactionHash, setTransactionHash] = useState("");
+  const [error, setError] = useState("");
+
+  /**
+   * On mount, if user is connected, automatically fetch their orders.
+   */
+  useEffect(() => {
+    if (isConnected && userWalletAddress) {
+      void fetchOrdersForWallet(userWalletAddress);
+    }
+  }, [isConnected, userWalletAddress]);
+
+  /**
+   * Fetch active orders for a specific wallet address.
+   */
+  async function fetchOrdersForWallet(maker: string) {
+    try {
+      setIsLoadingOrders(true);
+      setError("");
+      setOrders([]);
+      setSelectedOrderIds([]);
+      setTransactionHash("");
+
+      const fetched = await fetchActiveMagicEdenOrders(maker);
+      setOrders(fetched);
+      console.log("[MagicEdenPage] Orders fetched:", fetched);
+    } catch (err) {
+      console.error("[MagicEdenPage] Error fetching orders:", err);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }
+
+  /**
+   * Toggle selection for an individual order by ID.
+   */
+  function toggleOrderSelection(orderId: string) {
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId]
+    );
+  }
+
+  /**
+   * Toggle "Select All" / "Deselect All".
+   */
+  function toggleSelectAll() {
+    if (selectedOrderIds.length === orders.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(orders.map((o) => o.id));
+    }
+  }
+
+  /**
+   * Our callback for EIP-712 signing, used inside `processMagicEdenSteps`.
+   * We rely on wagmi's `signTypedDataAsync`.
+   */
+  const signEip712: SignEip712Callback = async ({
+    domain,
+    types,
+    primaryType,
+    message,
+  }) => {
+    // wagmi expects a shape: { domain, types, primaryType, message },
+    // but typed carefully, so we cast them as needed below.
+    return await signTypedDataAsync({
+      domain: domain as Record<string, unknown>,
+      types: types as Record<string, Array<{ name: string; type: string }>>,
+      primaryType,
+      message: message as Record<string, unknown>,
+    });
+  };
+
+  /**
+   * Cancel the selected orders via Magic Eden:
+   * 1) Request cancellation steps (signature or transaction).
+   * 2) Process them, signing if needed, then broadcasting the transaction if needed.
+   */
+  async function handleCancelSelectedOrders() {
+    try {
+      if (!isConnected || !agwClient || !userWalletAddress) {
+        throw new Error("Please connect your wallet before cancelling orders.");
+      }
+      if (selectedOrderIds.length === 0) {
+        throw new Error("No orders selected for cancellation.");
+      }
+
+      setIsCancelling(true);
+      setError("");
+      setTransactionHash("");
+
+      console.log(
+        "[handleCancelSelectedOrders] Requesting cancellation steps..."
+      );
+      const steps = await requestMagicEdenCancellationSteps(selectedOrderIds);
+
+      console.log("[handleCancelSelectedOrders] Received steps:", steps);
+
+      // Process those steps (signature => aggregator => transaction => on-chain)
+      const finalTxHash = await processMagicEdenSteps(
+        steps,
+        agwClient,
+        signEip712
+      );
+
+      if (finalTxHash) {
+        console.log(
+          "[handleCancelSelectedOrders] Cancellation Tx hash:",
+          finalTxHash
+        );
+        setTransactionHash(String(finalTxHash));
+      } else {
+        console.log(
+          "[handleCancelSelectedOrders] No on-chain transaction returned (possibly off-chain)."
+        );
+      }
+    } catch (err) {
+      console.error("[handleCancelSelectedOrders] Error:", err);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsCancelling(false);
+    }
+  }
+
+  /**
+   * If user is not connected, show a prompt to connect.
+   */
+  if (!isConnected || !userWalletAddress) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Magic Eden Orders</h1>
+        <p className="text-muted">
+          Connect your wallet to load your active orders.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Magic Eden Orders</h1>
+      <p className="text-muted">
+        Viewing orders for wallet: <code>{userWalletAddress}</code>
+      </p>
+
+      {isLoadingOrders && (
+        <div className="p-4 bg-card border border-border rounded-lg text-center">
+          Fetching orders...
+        </div>
+      )}
+
+      {/* Header row with refresh */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Active Orders</h2>
+        <div className="flex items-center gap-2">
+          {orders.length > 0 && (
+            <button
+              onClick={toggleSelectAll}
+              className="px-3 py-1 bg-foreground text-background rounded-lg hover:bg-muted transition-colors text-sm"
+            >
+              {selectedOrderIds.length === orders.length
+                ? "Deselect All"
+                : "Select All"}
+            </button>
+          )}
+          <button
+            onClick={() => fetchOrdersForWallet(userWalletAddress)}
+            disabled={isLoadingOrders}
+            className="px-3 py-1 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors text-sm"
+          >
+            {isLoadingOrders ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {orders.length === 0 && !isLoadingOrders ? (
+        <div className="p-4 bg-card border border-border rounded-lg text-center">
+          No active orders found.
+        </div>
+      ) : (
+        orders.length > 0 && (
+          <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+            <p className="text-sm text-muted">
+              Select orders and click &quot;Cancel Selected Orders&quot;.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="p-2 text-left">Select</th>
+                    <th className="p-2 text-left">Order ID</th>
+                    <th className="p-2 text-left">Maker</th>
+                    <th className="p-2 text-left">Item</th>
+                    <th className="p-2 text-left">Price (ETH)</th>
+                    <th className="p-2 text-left">Price (USD)</th>
+                    <th className="p-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr key={order.id} className="border-b border-border">
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderIds.includes(order.id)}
+                          onChange={() => toggleOrderSelection(order.id)}
+                        />
+                      </td>
+                      <td className="p-2">{order.id}</td>
+                      <td className="p-2">{order.maker}</td>
+                      <td className="p-2">
+                        {order.contract && order.tokenId
+                          ? `${order.contract.slice(0, 6)}...${order.contract.slice(-4)} #${order.tokenId}`
+                          : "--"}
+                      </td>
+                      <td className="p-2">{order.priceEth ?? "--"}</td>
+                      <td className="p-2">
+                        {order.priceUsd
+                          ? `$${order.priceUsd.toFixed(2)}`
+                          : "--"}
+                      </td>
+                      <td className="p-2">{order.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              onClick={handleCancelSelectedOrders}
+              disabled={isCancelling || selectedOrderIds.length === 0}
+              className="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCancelling ? "Cancelling..." : "Cancel Selected Orders"}
+            </button>
+          </div>
+        )
+      )}
+
+      {error && (
+        <div className="p-4 bg-danger/10 border border-danger/25 text-danger rounded-lg">
+          <p className="font-medium">Error:</p>
+          <p>{error}</p>
+        </div>
+      )}
+
+      {transactionHash && (
+        <div className="p-4 bg-success/10 border border-success/25 text-success rounded-lg break-all">
+          <p className="font-medium">Cancellation Transaction Submitted!</p>
+          <p className="text-sm mt-1">Tx Hash:</p>
+          <a
+            href={`https://abscan.org/tx/${transactionHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline break-all"
+          >
+            {transactionHash}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
