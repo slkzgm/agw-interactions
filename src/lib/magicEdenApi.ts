@@ -1,12 +1,16 @@
 // Path: src/lib/magicEdenApi.ts
 /**
- * Magic Eden API Helpers with typed code (no `any`).
+ * Magic Eden API Helpers with zero usage of `any`.
+ *
+ * We define an interface for the raw orders so we can avoid `(item: any) => {...}`
  */
 
-import type { AbstractClient } from "@abstract-foundation/agw-client";
 import type { Hex } from "viem";
+import type { AbstractClient } from "@abstract-foundation/agw-client";
 
-// If aggregator needs typed data sign:
+/**
+ * A callback type for EIP-712 typed data signing with wagmi or other methods.
+ */
 export type SignEip712Callback = (params: {
   domain: Record<string, unknown>;
   types: Record<string, unknown>;
@@ -15,7 +19,7 @@ export type SignEip712Callback = (params: {
 }) => Promise<Hex>;
 
 /**
- * Minimal shape for a mapped/returned order.
+ * The shape of the mapped orders we display in the UI.
  */
 export interface MagicEdenOrder {
   id: string;
@@ -28,13 +32,20 @@ export interface MagicEdenOrder {
 }
 
 /**
- * The shape of a single order returned by Magic Eden's asks/v5 endpoint.
+ * The shape of a single raw order from Magic Eden's aggregator.
+ * (We define enough fields to parse contract, maker, price, etc.)
  */
 interface MagicEdenFetchedOrder {
   id: string;
   maker: string;
   status: string;
   contract?: string;
+  price?: {
+    amount?: {
+      decimal?: number;
+      usd?: number;
+    };
+  };
   criteria?: {
     data?: {
       token?: {
@@ -42,54 +53,47 @@ interface MagicEdenFetchedOrder {
       };
     };
   };
-  price?: {
-    amount?: {
-      decimal?: number;
-      usd?: number;
-    };
-  };
-  // add more fields if needed
+  // add other fields if needed
 }
 
 /**
- * The top-level shape from GET /v3/rtp/abstract/orders/asks/v5
+ * The shape of the top-level object returned by the aggregator route
+ * that includes an "orders" array of `MagicEdenFetchedOrder`.
  */
-interface MagicEdenAsksV5Response {
+interface MagicEdenAsksResponse {
   orders: MagicEdenFetchedOrder[];
 }
 
-/**
- * 1) Fetch Active Orders - typed so we never use `any`.
- */
+// 1) Fetch active orders from our proxy route => aggregator
 export async function fetchActiveMagicEdenOrders(
   makerAddress: string
 ): Promise<MagicEdenOrder[]> {
-  // Here we assume you proxy from the client to your Next.js route /api/magicEden/asks.
   const url = `/api/magicEden/asks?maker=${encodeURIComponent(makerAddress)}&status=active`;
-  console.log("[fetchActiveMagicEdenOrders] GET (via Next.js proxy):", url);
+  console.log(
+    "[fetchActiveMagicEdenOrders] calling local route => aggregator:",
+    url
+  );
 
   const resp = await fetch(url, { method: "GET" });
   if (!resp.ok) {
     throw new Error(`Proxy /api/magicEden/asks error: ${resp.status}`);
   }
 
-  // We'll parse the JSON with a known shape
-  const data: unknown = await resp.json();
-
-  // Type-check the structure
+  const data = (await resp.json()) as unknown;
   if (typeof data !== "object" || data === null) {
-    throw new Error("Proxy response is not an object.");
+    throw new Error("No valid JSON in aggregator response.");
   }
   if (!("orders" in data)) {
-    throw new Error("No 'orders' field in proxy response.");
+    throw new Error("No 'orders' field in aggregator response.");
   }
 
-  const { orders } = data as MagicEdenAsksV5Response;
+  // We cast data to our typed shape:
+  const { orders } = data as MagicEdenAsksResponse;
 
-  // Now map with typed items
+  // Now parse each raw order into our UI shape
   return orders.map((item: MagicEdenFetchedOrder) => {
-    const contractAddr = item.contract || "";
-    const tokenId = item.criteria?.data?.token?.tokenId || "";
+    const contractAddr = item.contract ?? "";
+    const tokenId = item.criteria?.data?.token?.tokenId ?? "";
     const priceEth = item.price?.amount?.decimal ?? 0;
     const priceUsd = item.price?.amount?.usd ?? 0;
 
@@ -105,9 +109,7 @@ export async function fetchActiveMagicEdenOrders(
   });
 }
 
-// -------------------------------------------------------------------
-// Example Steps interfaces for aggregator
-// -------------------------------------------------------------------
+// Step interface definitions for aggregator
 interface MagicEdenSignatureData {
   signatureKind: string;
   domain: Record<string, unknown>;
@@ -137,8 +139,8 @@ interface MagicEdenCancelStepItem {
 }
 
 export interface MagicEdenCancelStep {
-  id: string;
-  kind: string;
+  id: string; // "cancellation-signature" or "cancellation"
+  kind: string; // "signature" or "transaction"
   items: MagicEdenCancelStepItem[];
 }
 
@@ -146,26 +148,16 @@ interface MagicEdenStepsResponse {
   steps: MagicEdenCancelStep[];
 }
 
-// -------------------------------------------------------------------
-// Example: requestMagicEdenCancellationSteps, processMagicEdenSteps
-// (You might be calling your own Next.js routes here as well.)
-// -------------------------------------------------------------------
-
-/**
- * 2) Request aggregator "steps" by calling your Next.js route with { step: "cancel-v3", orderIds }.
- */
+// 2) Request aggregator steps from our route => official aggregator
 export async function requestMagicEdenCancellationSteps(
   orderIds: string[]
 ): Promise<MagicEdenCancelStep[]> {
   console.log(
-    "[requestMagicEdenCancellationSteps] via /api/magicEden/cancel, step=cancel-v3"
+    "[requestMagicEdenCancellationSteps] calling /api/magicEden/cancel => aggregator"
   );
-
   const resp = await fetch("/api/magicEden/cancel", {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({
       step: "cancel-v3",
       orderIds,
@@ -175,22 +167,16 @@ export async function requestMagicEdenCancellationSteps(
     throw new Error(`Proxy /api/magicEden/cancel error: ${resp.status}`);
   }
 
-  const data: unknown = await resp.json();
-  if (typeof data !== "object" || data === null) {
-    throw new Error("Aggregator steps response not an object.");
-  }
-  if (!("steps" in data)) {
-    throw new Error("Missing 'steps' in aggregator steps response.");
+  const data = (await resp.json()) as unknown;
+  if (typeof data !== "object" || data === null || !("steps" in data)) {
+    throw new Error("No 'steps' in aggregator response.");
   }
 
   const { steps } = data as MagicEdenStepsResponse;
   return steps;
 }
 
-/**
- * 3) Process aggregator steps. If aggregator needs a signature step => we sign typed data
- *    then call /api/magicEden/cancel again with { step: "cancel-signature", ... }.
- */
+// 3) Process aggregator steps (signature => aggregator => transaction => broadcast)
 export async function processMagicEdenSteps(
   steps: MagicEdenCancelStep[],
   agwClient: AbstractClient,
@@ -219,16 +205,16 @@ export async function processMagicEdenSteps(
         );
         console.log("[processMagicEdenSteps] EIP-712 value:", value);
 
-        // Sign typed data with wagmi callback
+        // sign typed data with provided callback
         const signature = await signEip712({
           domain,
           types,
           primaryType,
           message: value,
         });
-        console.log("[processMagicEdenSteps] Received signature:", signature);
+        console.log("[processMagicEdenSteps] signature:", signature);
 
-        // call /api/magicEden/cancel with step=cancel-signature
+        // Then call local route => aggregator endpoint
         const postResp = await fetch("/api/magicEden/cancel", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -246,19 +232,19 @@ export async function processMagicEdenSteps(
           );
         }
 
-        const postData: unknown = await postResp.json();
+        const postData = await postResp.json();
         if (
           typeof postData === "object" &&
           postData !== null &&
           "steps" in postData
         ) {
-          const updated = (postData as { steps: MagicEdenCancelStep[] }).steps;
           console.log(
             "[processMagicEdenSteps] Updated steps after signature:",
-            updated
+            postData.steps
           );
-          currentSteps = updated;
+          currentSteps = (postData as { steps: MagicEdenCancelStep[] }).steps;
         } else {
+          // no new steps => remove signature step
           currentSteps = currentSteps.filter((st) => st !== signatureStep);
         }
       }
@@ -269,6 +255,7 @@ export async function processMagicEdenSteps(
     const txStep = currentSteps.find((s) => s.kind === "transaction");
     if (txStep) {
       console.log("[processMagicEdenSteps] Found transaction step:", txStep);
+
       if (txStep.items.length > 0) {
         const txItem = txStep.items[0];
         if (!txItem.data?.to || !txItem.data?.data) {
@@ -283,20 +270,20 @@ export async function processMagicEdenSteps(
             },
           ],
         });
+        console.log("[processMagicEdenSteps] broadcast TX. Hash:", txHash);
 
-        console.log("[processMagicEdenSteps] Broadcast TX. Hash:", txHash);
         return txHash as string;
       }
 
       console.log(
-        "[processMagicEdenSteps] Transaction step has no items. Possibly done."
+        "[processMagicEdenSteps] Transaction step has no items => done?"
       );
       return undefined;
     }
 
-    // If no signature or transaction step found => done
+    // No signature/transaction => done
     console.log(
-      "[processMagicEdenSteps] No signature or transaction step found. Possibly done."
+      "[processMagicEdenSteps] No signature or transaction step => done?"
     );
     return undefined;
   }

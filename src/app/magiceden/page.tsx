@@ -1,14 +1,14 @@
+// Path: src/app/magiceden/page.tsx
 "use client";
 
 /**
- * Magic Eden Orders page (client):
- * 1) Automatically loads connected user's active orders on mount.
- * 2) Fetches from our local /api/magicEden/asks route to avoid CORS.
- * 3) Supports "Select All" / "Deselect All" for orders.
- * 4) Cancels orders via the /api/magicEden/cancel route:
- *    - If aggregator requires an EIP-712 signature, we sign it with wagmi's `useSignTypedData`.
- *    - Then the server route calls Magic Eden from server side (no CORS).
- * 5) Links final transaction to https://abscan.org/tx/TX_HASH.
+ * Magic Eden Orders Page (client):
+ * 1) Loads the connected user's active orders on mount (via your server route -> official ME API).
+ * 2) Displays "Select All" / "Deselect All", and allows cancellation.
+ * 3) Cancels orders using two-step logic (signature + transaction) with official Magic Eden aggregator:
+ *    - We sign EIP-712 data with wagmi's `useSignTypedData`.
+ *    - We do server calls to /api/magicEden/cancel => which calls `https://api-mainnet.magiceden.dev/v3/rtp/ethereum/execute/cancel/v3`.
+ * 4) Avoids direct cross-origin calls from the browser, preventing CORS in production.
  */
 
 import React, { useEffect, useState } from "react";
@@ -27,10 +27,10 @@ export default function MagicEdenPage() {
   const { isConnected, address: userWalletAddress } = useAccount();
   const { data: agwClient } = useAbstractClient();
 
-  // Wagmi typed data hook for EIP-712 signing
+  // EIP-712 sign typed data
   const { signTypedDataAsync } = useSignTypedData();
 
-  // Orders & UI state
+  // Orders + UI states
   const [orders, setOrders] = useState<MagicEdenOrder[]>([]);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
@@ -39,7 +39,7 @@ export default function MagicEdenPage() {
   const [error, setError] = useState("");
 
   /**
-   * On mount, if user is connected, fetch their orders.
+   * If wallet is connected, load the user's orders.
    */
   useEffect(() => {
     if (isConnected && userWalletAddress) {
@@ -48,8 +48,9 @@ export default function MagicEdenPage() {
   }, [isConnected, userWalletAddress]);
 
   /**
-   * Proxy fetch to /api/magicEden/asks route (server-side).
-   * This avoids a direct call to Magic Eden and bypasses CORS issues.
+   * Fetch active orders by calling `/api/magicEden/asks?maker=...`.
+   * That route will server-side fetch the official ME endpoint
+   * `https://api-mainnet.magiceden.dev/v3/rtp/ethereum/orders/asks/v5`.
    */
   async function fetchOrdersForWallet(maker: string) {
     try {
@@ -71,7 +72,7 @@ export default function MagicEdenPage() {
   }
 
   /**
-   * Toggle selection for an individual order.
+   * Toggle or untoggle a single order ID selection.
    */
   function toggleOrderSelection(orderId: string) {
     setSelectedOrderIds((prev) =>
@@ -82,7 +83,7 @@ export default function MagicEdenPage() {
   }
 
   /**
-   * Toggle "Select All" / "Deselect All."
+   * Select All / Deselect All
    */
   function toggleSelectAll() {
     if (selectedOrderIds.length === orders.length) {
@@ -93,7 +94,7 @@ export default function MagicEdenPage() {
   }
 
   /**
-   * Our callback for EIP-712 signing (used in processMagicEdenSteps).
+   * Our EIP-712 sign callback used by `processMagicEdenSteps`.
    */
   const signEip712: SignEip712Callback = async ({
     domain,
@@ -111,9 +112,9 @@ export default function MagicEdenPage() {
 
   /**
    * Cancel selected orders:
-   * 1) POST /api/magicEden/cancel (step=cancel-v3) => get aggregator steps
-   * 2) If aggregator needs signature => we sign typed data & proxy to aggregator
-   * 3) If aggregator provides transaction => we broadcast on chain
+   * 1) We request aggregator "steps" from /api/magicEden/cancel => official ME "cancel/v3".
+   * 2) If aggregator wants signature => sign EIP-712 and post signature => aggregator
+   * 3) If aggregator provides transaction => broadcast on chain with `agwClient`.
    */
   async function handleCancelSelectedOrders() {
     try {
@@ -129,10 +130,9 @@ export default function MagicEdenPage() {
       setTransactionHash("");
 
       console.log(
-        "[handleCancelSelectedOrders] Requesting aggregator steps via server route..."
+        "[handleCancelSelectedOrders] Request aggregator steps via server route..."
       );
       const steps = await requestMagicEdenCancellationSteps(selectedOrderIds);
-
       console.log("[handleCancelSelectedOrders] Received steps:", steps);
 
       const finalTxHash = await processMagicEdenSteps(
@@ -148,7 +148,7 @@ export default function MagicEdenPage() {
         setTransactionHash(String(finalTxHash));
       } else {
         console.log(
-          "[handleCancelSelectedOrders] No on-chain transaction returned (off-chain?)."
+          "[handleCancelSelectedOrders] No on-chain transaction returned (maybe off-chain?)."
         );
       }
     } catch (err) {
@@ -159,6 +159,7 @@ export default function MagicEdenPage() {
     }
   }
 
+  // If wallet is not connected, prompt the user
   if (!isConnected || !userWalletAddress) {
     return (
       <div className="space-y-6">
@@ -183,7 +184,6 @@ export default function MagicEdenPage() {
         </div>
       )}
 
-      {/* Header row with refresh */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Active Orders</h2>
         <div className="flex items-center gap-2">
