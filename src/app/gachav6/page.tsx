@@ -94,6 +94,36 @@ export default function GachaV6Page() {
   }
 
   /**
+   * Set max amount for a specific pool
+   */
+  const setMaxForPool = (poolIndex: number) => {
+    setPools((prev) =>
+      prev.map((p, i) =>
+        i === poolIndex ? { ...p, claimAmount: p.available.toString() } : p
+      )
+    );
+  };
+
+  /**
+   * Set max amount for all pools at once
+   */
+  const setMaxForAllPools = () => {
+    setPools((prev) =>
+      prev.map((p) => ({ ...p, claimAmount: p.available.toString() }))
+    );
+  };
+
+  /**
+   * Calculate total tickets that would be claimed based on current input values
+   */
+  const calculateTotalTicketsToBeProcessed = (): number => {
+    return pools.reduce((total, pool) => {
+      const claimAmount = parseInt(pool.claimAmount || "0", 10);
+      return total + (isNaN(claimAmount) ? 0 : claimAmount);
+    }, 0);
+  };
+
+  /**
    * Handle batch claiming:
    * Because the contract's `claim(poolId)` method claims a single ticket (no "amount" param),
    * we must call it as many times as the user wants to claim. We'll do multiple calls
@@ -169,6 +199,14 @@ export default function GachaV6Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, agwClient]);
 
+  // Calculate the total tickets that will be claimed
+  const totalTicketsToProcess = calculateTotalTicketsToBeProcessed();
+  // Determine total available tickets across all pools
+  const totalAvailableTickets = pools.reduce(
+    (sum, pool) => sum + Number(pool.available),
+    0
+  );
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">GachaV6 Batch Claim</h1>
@@ -184,15 +222,25 @@ export default function GachaV6Page() {
         </div>
       ) : (
         <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-xl font-semibold">Your Pools</h2>
-            <button
-              onClick={loadUserTickets}
-              disabled={isLoading}
-              className="px-3 py-1 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors text-sm"
-            >
-              {isLoading ? "Loading..." : "Refresh Tickets"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {totalAvailableTickets > 0 && (
+                <button
+                  onClick={setMaxForAllPools}
+                  className="px-3 py-1 bg-success text-white rounded-lg hover:bg-success-hover transition-colors text-sm"
+                >
+                  Max All
+                </button>
+              )}
+              <button
+                onClick={loadUserTickets}
+                disabled={isLoading}
+                className="px-3 py-1 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors text-sm"
+              >
+                {isLoading ? "Loading..." : "Refresh Tickets"}
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -204,6 +252,7 @@ export default function GachaV6Page() {
                   <th className="p-2 text-left">Claimed</th>
                   <th className="p-2 text-left">Available</th>
                   <th className="p-2 text-left">Claim Amount</th>
+                  <th className="p-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -220,6 +269,7 @@ export default function GachaV6Page() {
                       <input
                         type="number"
                         min={0}
+                        max={Number(pool.available)}
                         value={pool.claimAmount}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -233,18 +283,39 @@ export default function GachaV6Page() {
                         placeholder="0"
                       />
                     </td>
+                    <td className="p-2">
+                      {Number(pool.available) > 0 && (
+                        <button
+                          onClick={() => setMaxForPool(idx)}
+                          className="px-2 py-1 bg-success text-white rounded-lg hover:bg-success-hover transition-colors text-xs"
+                        >
+                          Max
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
+          {totalTicketsToProcess > 0 && (
+            <div className="p-3 bg-background border border-border rounded-lg">
+              <p className="text-sm">
+                You are about to claim <strong>{totalTicketsToProcess}</strong>{" "}
+                tickets in total.
+              </p>
+            </div>
+          )}
+
           <button
             onClick={handleBatchClaim}
-            disabled={isClaiming}
+            disabled={isClaiming || totalTicketsToProcess <= 0}
             className="w-full px-4 py-2 bg-success text-white rounded-lg hover:bg-success-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isClaiming ? "Claiming..." : "Claim Tickets"}
+            {isClaiming
+              ? "Claiming..."
+              : `Claim ${totalTicketsToProcess || ""} Tickets`}
           </button>
 
           {error && (
