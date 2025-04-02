@@ -32,7 +32,7 @@ export default function GachaV6Page() {
 
   // For demo, we define some pool IDs the user can interact with
   // In production, you might fetch these dynamically from the contract or config
-  const POOL_IDS = [1, 2, 3, 4];
+  const POOL_IDS = [1, 2, 3, 4, 5, 6, 7];
 
   const [pools, setPools] = useState<PoolTicketInfo[]>(
     POOL_IDS.map((id) => ({
