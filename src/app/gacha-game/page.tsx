@@ -1,7 +1,7 @@
-// Path: src/app/gachav6/page.tsx
+// Path: src/app/gacha-game/page.tsx
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAccount } from "wagmi";
 import { useAbstractClient } from "@abstract-foundation/agw-react";
 import {
@@ -47,7 +47,7 @@ interface GachaUserData {
   totalWinInEth: number;
 }
 
-export default function GachaV6Page() {
+export default function GachaGamePage() {
   const { address, isConnected } = useAccount();
   const { data: agwClient } = useAbstractClient();
 
@@ -480,11 +480,17 @@ export default function GachaV6Page() {
   }
 
   /** Auto-load user tickets if connected */
+  const loadUserTicketsRef = useRef(loadUserTickets);
+
+  useEffect(() => {
+    loadUserTicketsRef.current = loadUserTickets;
+  }, [loadUserTickets]);
+
   useEffect(() => {
     if (isConnected && agwClient) {
-      void loadUserTickets();
+      void loadUserTicketsRef.current();
     }
-  }, [isConnected, agwClient, loadUserTickets]);
+  }, [isConnected, agwClient]);
 
   /** Sum up all "claimAmount" for a quick display. */
   function totalTicketsToProcess() {
@@ -496,7 +502,7 @@ export default function GachaV6Page() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">GachaV6 Batch Claim</h1>
+      <h1 className="text-3xl font-bold">Gacha Game Batch Claim</h1>
       <p className="text-muted">
         Select how many tickets to claim per pool. Each ticket requires one
         on-chain claim, but we batch them into a single transaction for

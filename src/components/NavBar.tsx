@@ -142,9 +142,9 @@ export function NavBar() {
 
               {/* Other Links - Consistent styling */}
               <Link
-                href="/gachav6"
+                href="/gacha-game"
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  isActive("/gachav6")
+                  isActive("/gacha-game")
                     ? "bg-primary text-white"
                     : "text-foreground hover:bg-card"
                 }`}
@@ -311,9 +311,9 @@ export function NavBar() {
           {/* Other Sections - without the header for cleaner look */}
           <div className="border-t border-border pt-2 mt-2">
             <Link
-              href="/gachav6"
+              href="/gacha-game"
               className={`block px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                isActive("/gachav6")
+                isActive("/gacha-game")
                   ? "bg-primary text-white"
                   : "text-foreground hover:bg-background"
               }`}
