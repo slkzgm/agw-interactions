@@ -47,7 +47,7 @@ interface GachaUserData {
   totalWinInEth: number;
 }
 
-export default function GachaGamePage() {
+const GachaGamePage = () => {
   const { address, isConnected } = useAccount();
   const { data: agwClient } = useAbstractClient();
 
@@ -82,10 +82,103 @@ export default function GachaGamePage() {
   const [userData, setUserData] = useState<GachaUserData | null>(null);
   const [pointsGained, setPointsGained] = useState<number | null>(null);
 
-  // Toggle between "Last Claim Results" and "Claim History"
-  const [activeTab, setActiveTab] = useState<"lastClaim" | "history">(
-    "lastClaim"
+  // Toggle between "Last Claim Results" and "Claim History" and "Wallet Lookup"
+  const [activeTab, setActiveTab] = useState<
+    "lastClaim" | "history" | "lookup"
+  >("lastClaim");
+
+  // State for wallet lookup
+  const [walletLookup, setWalletLookup] = useState<string>("");
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupError, setLookupError] = useState<string>("");
+
+  // State for accordions
+  const [isClaimSectionOpen, setIsClaimSectionOpen] = useState(false);
+
+  /**
+   * Vérifie si une chaîne est une adresse Ethereum valide
+   */
+  function isValidEthereumAddress(address: string): boolean {
+    // Vérification du format hexadécimal 0x suivi de 40 caractères hexadécimaux (20 octets)
+    return /^0x[0-9a-fA-F]{40}$/.test(address);
+  }
+
+  /**
+   * Load wallet data for any address (lookup purposes)
+   */
+  const loadWalletData = useCallback(
+    async (walletAddress: string): Promise<void> => {
+      try {
+        const response = await fetch("/api/gacha/points", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ wallet: walletAddress }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch points: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.me) {
+          const stats: GachaUserData = {
+            wallet: data.me.wallet,
+            points: data.me.points,
+            ticketOpens: data.me.ticketOpens,
+            biggestWinInEth: data.me.biggestWinInEth,
+            totalWinInEth: data.me.totalWinInEth,
+          };
+
+          // If this is the connected wallet, update userData
+          if (
+            isConnected &&
+            address &&
+            address.toLowerCase() === walletAddress.toLowerCase()
+          ) {
+            setUserData(stats);
+          }
+          // Otherwise treat as lookup data
+          else if (walletAddress.toLowerCase() !== address?.toLowerCase()) {
+            setUserData(stats);
+          }
+        }
+      } catch (err) {
+        console.error("[loadWalletData] Error:", err);
+        throw err;
+      }
+    },
+    [address, isConnected]
   );
+
+  /**
+   * Effectue une recherche automatique lorsque l'utilisateur tape une adresse valide
+   */
+  useEffect(() => {
+    // Si l'adresse semble être au format Ethereum valide
+    if (walletLookup && isValidEthereumAddress(walletLookup)) {
+      setIsLookingUp(true);
+
+      const debounceTimeout = setTimeout(() => {
+        loadWalletData(walletLookup)
+          .then(() => {
+            setActiveTab("history");
+            setIsLookingUp(false);
+          })
+          .catch((err) => {
+            console.error("[Auto lookup] Error:", err);
+            setIsLookingUp(false);
+            setLookupError("Failed to load wallet data");
+          });
+      }, 800); // délai de 800ms pour éviter trop d'appels API
+
+      return () => clearTimeout(debounceTimeout);
+    } else {
+      // Réinitialiser l'indicateur de chargement si l'adresse n'est pas valide
+      setIsLookingUp(false);
+    }
+  }, [walletLookup, loadWalletData]);
 
   /**
    * On mount, restore data from localStorage (if available).
@@ -500,214 +593,303 @@ export default function GachaGamePage() {
     }, 0);
   }
 
+  // Functions to toggle accordion sections
+  const toggleClaimSection = () => {
+    setIsClaimSectionOpen(!isClaimSectionOpen);
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Gacha Game Batch Claim</h1>
-      <p className="text-muted">
-        Select how many tickets to claim per pool. Each ticket requires one
-        on-chain claim, but we batch them into a single transaction for
-        convenience.
-      </p>
-
-      {!isConnected ? (
-        <div className="bg-card border border-border rounded-lg p-6 text-center">
-          Please connect your wallet first.
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div>
+          <h1 className="text-3xl font-bold">Gacha Game Dashboard</h1>
+          <p className="text-muted mt-1">
+            Check your stats, claim history, and manage your tickets.
+          </p>
         </div>
-      ) : (
-        <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-          {/* Gacha Points Summary */}
-          {userData && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-background border border-border rounded-lg p-3">
-                <div className="text-xs text-muted mb-1">Gacha Points</div>
-                <div className="font-medium text-lg">
-                  {userData.points.toLocaleString()}
-                </div>
+
+        {/* Compact Wallet Lookup Input */}
+        <div className="w-full md:w-auto">
+          <form className="flex gap-2">
+            <input
+              type="text"
+              value={walletLookup}
+              onChange={(e) => setWalletLookup(e.target.value)}
+              placeholder="Enter wallet address"
+              className="w-full md:w-64 px-3 py-2 text-sm bg-background border border-border rounded-lg"
+              disabled={isLookingUp}
+            />
+            {isLookingUp && (
+              <div className="px-3 py-2 bg-background text-sm rounded-lg border border-border">
+                <span className="inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
               </div>
-              <div className="bg-background border border-border rounded-lg p-3">
-                <div className="text-xs text-muted mb-1">Ticket Opens</div>
-                <div className="font-medium text-lg">
-                  {userData.ticketOpens.toLocaleString()}
-                </div>
-              </div>
-              <div className="bg-background border border-border rounded-lg p-3">
-                <div className="text-xs text-muted mb-1">Biggest Win</div>
-                <div className="font-medium text-lg">
-                  {userData.biggestWinInEth.toFixed(4)} ETH
-                </div>
-              </div>
-              <div className="bg-background border border-border rounded-lg p-3">
-                <div className="text-xs text-muted mb-1">Total Wins</div>
-                <div className="font-medium text-lg">
-                  {userData.totalWinInEth.toFixed(4)} ETH
-                </div>
-              </div>
+            )}
+          </form>
+          {lookupError && (
+            <div className="mt-1 p-1 text-xs bg-danger/10 border border-danger/25 text-danger rounded-lg">
+              {lookupError}
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Pools Table */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Your Pools</h2>
-            <div className="flex space-x-2">
-              <button
-                onClick={setMaxForAllPools}
-                disabled={isLoading || pools.every((p) => p.available === 0n)}
-                className="px-3 py-1 bg-success text-white rounded-lg hover:bg-success-hover transition-colors text-sm disabled:opacity-50"
-              >
-                Set All Max
-              </button>
-              <button
-                onClick={loadUserTickets}
-                disabled={isLoading}
-                className="px-3 py-1 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors text-sm"
-              >
-                {isLoading ? "Loading..." : "Refresh Tickets"}
-              </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="p-2 text-left">Pool</th>
-                  <th className="p-2 text-left">Purchased</th>
-                  <th className="p-2 text-left">Claimed</th>
-                  <th className="p-2 text-left">Available</th>
-                  <th className="p-2 text-left">Claim Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pools.map((p, idx) => {
-                  const maxAvail = Number(p.available);
-                  return (
-                    <tr key={p.poolId} className="border-b border-border">
-                      <td className="p-2 font-medium">
-                        {POOL_NAMES[p.poolId] || `Pool #${p.poolId}`}
-                      </td>
-                      <td className="p-2">{p.purchased.toString()}</td>
-                      <td className="p-2">{p.claimed.toString()}</td>
-                      <td className="p-2">{p.available.toString()}</td>
-                      <td className="p-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            max={maxAvail}
-                            value={p.claimAmount}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPools((prev) =>
-                                prev.map((poolItem, i2) =>
-                                  i2 === idx
-                                    ? { ...poolItem, claimAmount: val }
-                                    : poolItem
-                                )
-                              );
-                            }}
-                            className="w-16 px-2 py-1 bg-background border border-border rounded-lg"
-                          />
-                          {maxAvail > 0 && (
-                            <button
-                              onClick={() => {
-                                setPools((prev) =>
-                                  prev.map((poolItem, i2) =>
-                                    i2 === idx
-                                      ? {
-                                          ...poolItem,
-                                          claimAmount: p.available.toString(),
-                                        }
-                                      : poolItem
-                                  )
-                                );
-                              }}
-                              className="px-2 py-1 bg-success text-white rounded hover:bg-success-hover text-xs"
-                            >
-                              Max
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Claim Button */}
-          <button
-            onClick={handleBatchClaim}
-            disabled={isClaiming || totalTicketsToProcess() === 0}
-            className="w-full px-4 py-2 bg-success text-white rounded-lg hover:bg-success-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isClaiming
-              ? "Claiming..."
-              : `Claim ${totalTicketsToProcess() || ""} Tickets`}
-          </button>
-
-          {/* Error or Transaction Hash Display */}
-          {error && (
-            <div className="p-4 bg-danger/10 border border-danger/25 text-danger rounded-lg">
-              {error}
-            </div>
-          )}
-          {txHash && (
-            <div className="p-4 bg-success/10 border border-success/25 text-success rounded-lg break-all">
-              <p className="font-bold">Batch Claim Submitted!</p>
-              <p className="text-sm mt-1">Tx Hash:</p>
-              <a
-                href={`https://abscan.org/tx/${txHash}`}
-                target="_blank"
-                rel="noreferrer"
-                className="underline break-all"
-              >
-                {txHash}
-              </a>
-            </div>
-          )}
-
-          {/* Tab Navigation */}
-          <div className="mt-4">
-            <div className="border-b border-border">
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setActiveTab("lastClaim")}
-                  className={`px-4 py-2 -mb-px text-sm font-medium transition-colors ${
-                    activeTab === "lastClaim"
-                      ? "border-b-2 border-primary text-primary"
-                      : "text-muted hover:text-foreground"
-                  }`}
-                >
-                  Last Claim Results
-                </button>
-                <button
-                  onClick={() => setActiveTab("history")}
-                  className={`px-4 py-2 -mb-px text-sm font-medium transition-colors ${
-                    activeTab === "history"
-                      ? "border-b-2 border-primary text-primary"
-                      : "text-muted hover:text-foreground"
-                  }`}
-                >
-                  Claim History
-                </button>
+      {/* Gacha Points Summary */}
+      {(userData || (walletLookup && activeTab === "history")) && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            {userData ? (
+              <div className="flex items-center">
+                <div className="bg-background/80 py-1 px-2 rounded-lg border border-border mr-2">
+                  <span className="font-mono text-sm">
+                    {userData.wallet.substring(0, 6)}...
+                    {userData.wallet.substring(userData.wallet.length - 4)}
+                  </span>
+                </div>
+                <span>Gacha Game Stats</span>
+              </div>
+            ) : (
+              "Gacha Game Stats"
+            )}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-background border border-border rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Gacha Points</div>
+              <div className="font-medium text-lg">
+                {userData?.points.toLocaleString() || "—"}
               </div>
             </div>
-
-            {/* Tab Content */}
-            <div className="p-4 bg-card border-x border-b border-border rounded-b-lg">
-              {activeTab === "lastClaim" ? (
-                <GachaClaimTab
-                  claimRecap={claimRecap}
-                  claimedPoolIds={claimedPoolIds}
-                  pointsGained={pointsGained}
-                />
-              ) : (
-                <GachaHistory wallet={address || ""} />
-              )}
+            <div className="bg-background border border-border rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Ticket Opens</div>
+              <div className="font-medium text-lg">
+                {userData?.ticketOpens.toLocaleString() || "—"}
+              </div>
+            </div>
+            <div className="bg-background border border-border rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Biggest Win</div>
+              <div className="font-medium text-lg">
+                {userData ? `${userData.biggestWinInEth.toFixed(4)} ETH` : "—"}
+              </div>
+            </div>
+            <div className="bg-background border border-border rounded-lg p-3">
+              <div className="text-xs text-muted mb-1">Total Wins</div>
+              <div className="font-medium text-lg">
+                {userData ? `${userData.totalWinInEth.toFixed(4)} ETH` : "—"}
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Batch Claim Section - Accordion */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div
+          className="flex justify-between items-center p-4 cursor-pointer hover:bg-background/50 transition-colors"
+          onClick={toggleClaimSection}
+        >
+          <h2 className="text-xl font-semibold">Claim Multiple Tickets</h2>
+          <div className="flex items-center">
+            {!isConnected && (
+              <span className="text-sm text-muted mr-2">
+                Connect wallet to access
+              </span>
+            )}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform ${isClaimSectionOpen ? "rotate-180" : ""}`}
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </div>
+
+        {isClaimSectionOpen && (
+          <div className="p-6 border-t border-border">
+            {!isConnected ? (
+              <div className="bg-background border border-border rounded-lg p-6 text-center">
+                Please connect your wallet first to access batch claim
+                functionality.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Pools Table */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Your Pools</h2>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={setMaxForAllPools}
+                      disabled={
+                        isLoading || pools.every((p) => p.available === 0n)
+                      }
+                      className="px-3 py-1 bg-success text-white rounded-lg hover:bg-success-hover transition-colors text-sm disabled:opacity-50"
+                    >
+                      Set All Max
+                    </button>
+                    <button
+                      onClick={loadUserTickets}
+                      disabled={isLoading}
+                      className="px-3 py-1 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors text-sm"
+                    >
+                      {isLoading ? "Loading..." : "Refresh Tickets"}
+                    </button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="p-2 text-left">Pool</th>
+                        <th className="p-2 text-left">Purchased</th>
+                        <th className="p-2 text-left">Claimed</th>
+                        <th className="p-2 text-left">Available</th>
+                        <th className="p-2 text-left">Claim Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pools.map((p, idx) => {
+                        const maxAvail = Number(p.available);
+                        return (
+                          <tr key={p.poolId} className="border-b border-border">
+                            <td className="p-2 font-medium">
+                              {POOL_NAMES[p.poolId] || `Pool #${p.poolId}`}
+                            </td>
+                            <td className="p-2">{p.purchased.toString()}</td>
+                            <td className="p-2">{p.claimed.toString()}</td>
+                            <td className="p-2">{p.available.toString()}</td>
+                            <td className="p-2">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={maxAvail}
+                                  value={p.claimAmount}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setPools((prev) =>
+                                      prev.map((poolItem, i2) =>
+                                        i2 === idx
+                                          ? { ...poolItem, claimAmount: val }
+                                          : poolItem
+                                      )
+                                    );
+                                  }}
+                                  className="w-16 px-2 py-1 bg-background border border-border rounded-lg"
+                                />
+                                {maxAvail > 0 && (
+                                  <button
+                                    onClick={() => {
+                                      setPools((prev) =>
+                                        prev.map((poolItem, i2) =>
+                                          i2 === idx
+                                            ? {
+                                                ...poolItem,
+                                                claimAmount:
+                                                  p.available.toString(),
+                                              }
+                                            : poolItem
+                                        )
+                                      );
+                                    }}
+                                    className="px-2 py-1 bg-success text-white rounded hover:bg-success-hover text-xs"
+                                  >
+                                    Max
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Claim Button */}
+                <button
+                  onClick={handleBatchClaim}
+                  disabled={isClaiming || totalTicketsToProcess() === 0}
+                  className="w-full px-4 py-2 bg-success text-white rounded-lg hover:bg-success-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isClaiming
+                    ? "Claiming..."
+                    : `Claim ${totalTicketsToProcess() || ""} Tickets`}
+                </button>
+
+                {/* Error or Transaction Hash Display */}
+                {error && (
+                  <div className="p-4 bg-danger/10 border border-danger/25 text-danger rounded-lg">
+                    {error}
+                  </div>
+                )}
+                {txHash && (
+                  <div className="p-4 bg-success/10 border border-success/25 text-success rounded-lg break-all">
+                    <p className="font-bold">Batch Claim Submitted!</p>
+                    <p className="text-sm mt-1">Tx Hash:</p>
+                    <a
+                      href={`https://abscan.org/tx/${txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline break-all"
+                    >
+                      {txHash}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Tab Navigation for Claims & History */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="border-b border-border">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setActiveTab("lastClaim")}
+              className={`px-4 py-2 -mb-px text-sm font-medium transition-colors ${
+                activeTab === "lastClaim"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted hover:text-foreground"
+              }`}
+            >
+              Last Multiple Claim
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`px-4 py-2 -mb-px text-sm font-medium transition-colors ${
+                activeTab === "history"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted hover:text-foreground"
+              }`}
+            >
+              Last 50 Claims
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-4 bg-card border-x border-b border-border rounded-b-lg">
+          {activeTab === "lastClaim" ? (
+            <GachaClaimTab
+              claimRecap={claimRecap}
+              claimedPoolIds={claimedPoolIds}
+              pointsGained={pointsGained}
+            />
+          ) : (
+            <GachaHistory wallet={walletLookup || address || ""} />
+          )}
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default GachaGamePage;
