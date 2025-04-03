@@ -1,5 +1,4 @@
 // Path: src/components/gacha/GachaClaimTab.tsx
-// NOTE: This file demonstrates how to fix the no-explicit-any error and ensure typed localStorage parsing.
 
 /**
  * /src/components/gacha/GachaClaimTab.tsx

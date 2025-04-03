@@ -1,11 +1,4 @@
 // Path: src/components/gacha/GachaResultsDisplay.tsx
-// (Unmodified except for clarifying that poolSummaries now includes total tickets and
-// automatically displays the win rate.)
-//
-// This file already supports "poolSummaries" with { totalClaimed, wins } and prints a "win rate".
-// No changes needed other than to confirm it will show totalClaimed and calculate the rate.
-//
-// (Included here only so you see it's unchanged.)
 
 import React from "react";
 import { formatDistanceToNow } from "date-fns";

@@ -1,5 +1,4 @@
 // Path: src/components/gacha/GachaHistory.tsx
-// NOTE: This file demonstrates how to fix the no-explicit-any error by casting the fetched JSON to a proper type.
 
 /**
  * /src/components/gacha/GachaHistory.tsx
