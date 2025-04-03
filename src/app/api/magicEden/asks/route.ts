@@ -20,11 +20,6 @@ export async function GET(request: Request) {
   // optionally, exclude EOA
   // url.searchParams.set("excludeEOA", "true");
 
-  console.log(
-    "[asksRoute] Proxying GET to official ME dev API:",
-    url.toString()
-  );
-
   // server-to-server fetch
   const resp = await fetch(url, {
     method: "GET",

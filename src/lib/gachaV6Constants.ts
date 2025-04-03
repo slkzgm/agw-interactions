@@ -522,3 +522,45 @@ export const GACHAV6_ABI = [
 
 export const GACHAV6_CONTRACT_ADDRESS =
   "0x3272596F776470D2D7C3f7dfF3dc50888b7D8967";
+
+export const TOKEN_INFO: Record<string, { name: string; symbol: string }> = {
+  "0x9ebe3a824ca958e4b3da772d2065518f009cba62": {
+    name: "Pengu",
+    symbol: "PENGU",
+  },
+  "0x8041fbc255d6e6330e92a61325da515656bfd2dd": { name: "Yup", symbol: "YUP" },
+  "0x85ca16fd0e81659e0b8be337294149e722528731": {
+    name: "Noot",
+    symbol: "NOOT",
+  },
+  "0xc325b7e2736a5202bd860f5974d0aa375e57ede5": {
+    name: "Abster",
+    symbol: "ABSTER",
+  },
+  "0xd045e0686a784e272e651fc2c08324edabe7403a": {
+    name: "Chengu",
+    symbol: "CHENGU",
+  },
+  "0x52629ddbf28aa01aa22b994ec9c80273e4eb5b0a": {
+    name: "Retsba",
+    symbol: "RETSBA",
+  },
+  "0x3439153eb7af838ad19d56e1571fbd09333c2809": {
+    name: "Wrapped Ether",
+    symbol: "WETH",
+  },
+  "0x0000000000000000000000000000000000000000": {
+    name: "Gacha Points",
+    symbol: "GP",
+  },
+};
+
+export const POOL_NAMES: Record<number, string> = {
+  1: "Pengu 1",
+  2: "Pengu 2",
+  3: "YUP",
+  4: "NOOT",
+  5: "ABSTER",
+  6: "CHENGU",
+  7: "RETSBA",
+};
