@@ -545,6 +545,10 @@ export const TOKEN_INFO: Record<string, { name: string; symbol: string }> = {
     name: "Retsba",
     symbol: "RETSBA",
   },
+  "0x8041FbC255d6E6330E92a61325da515656bFD2dd": {
+    name: "Polly",
+    symbol: "POLLY",
+  },
   "0x3439153eb7af838ad19d56e1571fbd09333c2809": {
     name: "Wrapped Ether",
     symbol: "WETH",
@@ -563,4 +567,5 @@ export const POOL_NAMES: Record<number, string> = {
   5: "ABSTER",
   6: "CHENGU",
   7: "RETSBA",
+  8: "POLLY"
 };

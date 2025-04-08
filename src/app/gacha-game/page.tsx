@@ -52,7 +52,7 @@ const GachaGamePage = () => {
   const { data: agwClient } = useAbstractClient();
 
   // We'll track the known pool IDs here. Could be dynamic in a real scenario.
-  const POOL_IDS = [1, 2, 3, 4, 5, 6, 7];
+  const POOL_IDS = [1, 2, 3, 4, 5, 6, 7, 8];
 
   // Local state for each pool's info
   const [pools, setPools] = useState<PoolTicketInfo[]>(
